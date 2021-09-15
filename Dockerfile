@@ -83,7 +83,7 @@ RUN ${PIP} --no-cache-dir install --upgrade \
 # Some TF tools expect a "python" binary
 RUN ln -s $(which ${PYTHON}) /usr/local/bin/python
 
-RUN apt-get update && apt-get install -y \
+RUN DEBIAN_FRONTEND='noninteractive' apt-get update && DEBIAN_FRONTEND='noninteractive' apt-get install -y \
     iputils-ping \
     net-tools \
     build-essential \
@@ -99,65 +99,71 @@ RUN apt-get update && apt-get install -y \
     virtualenv \
     swig
 
+RUN apt-get upgrade -y
+RUN ${PIP} install --upgrade ${PIP}
+#RUN ${PIP} install python3.8-dev
 # Install python packages
-RUN ${PIP} --no-cache-dir install \
-    Pillow \
-    h5py \
-    keras_applications \
-    keras_preprocessing \
-    matplotlib \
-    mock \
-    numpy \
-    scipy \
-    sklearn \
-    pandas \
-    future \
-    portpicker \
-    && test "${USE_PYTHON_3_NOT_2}" -eq 1 && true || ${PIP} --no-cache-dir install \
-    tensorflow-gpu \
-    tensorflow-model-optimization \
-    keras \
-    mnn \
-    pycocotools \
-    enum34
+
+RUN ${PIP} install Pillow 
+RUN ${PIP} install h5py 
+RUN ${PIP} install keras_applications 
+RUN ${PIP} install keras_preprocessing 
+RUN ${PIP} install matplotlib 
+RUN ${PIP} install mock 
+RUN ${PIP} install numpy 
+RUN ${PIP} install scipy 
+RUN ${PIP} install sklearn 
+RUN ${PIP} install pandas 
+RUN ${PIP} install future 
+RUN ${PIP} install portpicker 
+    #&& test "${USE_PYTHON_3_NOT_2}" -eq 1
+# RUN true || ${PIP} install \
+RUN ${PIP} install tensorflow-gpu 
+RUN true || ${PIP} install tensorflow-model-optimization 
+RUN ${PIP} install keras 
+RUN ${PIP} install mnn 
+RUN ${PIP} install pycocotools 
+RUN ${PIP} install tqdm
+RUN true || ${PIP} install enum3
 
 # Change workdir
 WORKDIR /root
 
 # Prepare code & dataset (PascalVOC)
-RUN git clone https://github.com/david8862/keras-YOLOv3-model-set.git && \
-    mkdir -p data/PascalVOC && \
-    wget -O data/PascalVOC/VOCtrainval_06-Nov-2007.tar http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtrainval_06-Nov-2007.tar && \
-    wget -O data/PascalVOC/VOCtest_06-Nov-2007.tar http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtest_06-Nov-2007.tar && \
-    wget -O data/PascalVOC/VOCtrainval_11-May-2012.tar http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar && \
-    wget -O data/PascalVOC/VOC2012test.tar http://pjreddie.com/media/files/VOC2012test.tar && \
-    pushd data/PascalVOC && \
+RUN git clone https://github.com/david8862/keras-YOLOv3-model-set.git 
+RUN mkdir -p data/PascalVOC 
+RUN wget -O data/PascalVOC/VOCtrainval_06-Nov-2007.tar http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtrainval_06-Nov-2007.tar 
+RUN wget -O data/PascalVOC/VOCtest_06-Nov-2007.tar http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtest_06-Nov-2007.tar 
+RUN wget -O data/PascalVOC/VOCtrainval_11-May-2012.tar http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar 
+RUN wget -O data/PascalVOC/VOC2012test.tar http://pjreddie.com/media/files/VOC2012test.tar 
+RUN pushd data/
+RUN ls && pushd data/PascalVOC/ && \
     tar xf VOCtest_06-Nov-2007.tar && \
     tar xf VOCtrainval_06-Nov-2007.tar && \
-    tar xf VOCtrainval_11-May-2012.tar && \
-    popd && \
-    pushd keras-YOLOv3-model-set/tools/ && \
-    python voc_annotation.py --dataset_path=/root/data/PascalVOC/VOCdevkit/ --output_path=/root/data/PascalVOC && \
-    popd && \
-    pushd data/PascalVOC && cp -rf 2007_train.txt trainval.txt && cat 2007_val.txt >> trainval.txt && cat 2012_train.txt >> trainval.txt && cat 2012_val.txt >> trainval.txt && \
-    cp -rf trainval.txt 2007_test.txt /root/keras-YOLOv3-model-set/ && \
-    popd && \
-    wget -O keras-YOLOv3-model-set/weights/yolov3.weights https://pjreddie.com/media/files/yolov3.weights && \
-    wget -O keras-YOLOv3-model-set/weights/yolov3-tiny.weights https://pjreddie.com/media/files/yolov3-tiny.weights && \
-    wget -O keras-YOLOv3-model-set/weights/yolov3-spp.weights https://pjreddie.com/media/files/yolov3-spp.weights && \
-    wget -O keras-YOLOv3-model-set/weights/darknet53.conv.74.weights https://pjreddie.com/media/files/darknet53.conv.74 && \
-    wget -O keras-YOLOv3-model-set/weights/darknet19_448.conv.23.weights https://pjreddie.com/media/files/darknet19_448.conv.23 && \
-    wget -O keras-YOLOv3-model-set/weights/yolov2.weights http://pjreddie.com/media/files/yolo.weights && \
-    wget -O keras-YOLOv3-model-set/weights/yolov2-voc.weights http://pjreddie.com/media/files/yolo-voc.weights && \
-    pushd keras-YOLOv3-model-set/ && \
-    python tools/convert.py cfg/yolov3.cfg weights/yolov3.weights weights/yolov3.h5 && \
-    python tools/convert.py cfg/yolov3-tiny.cfg weights/yolov3-tiny.weights weights/yolov3-tiny.h5 && \
-    python tools/convert.py cfg/yolov3-spp.cfg weights/yolov3-spp.weights weights/yolov3-spp.h5 && \
-    python tools/convert.py cfg/yolov2.cfg weights/yolov2.weights weights/yolov2.h5 && \
-    python tools/convert.py cfg/yolov2-voc.cfg weights/yolov2-voc.weights weights/yolov2-voc.h5 && \
-    python tools/convert.py cfg/darknet53.cfg weights/darknet53.conv.74.weights weights/darknet53.h5 && \
-    python tools/convert.py cfg/darknet19_448_body.cfg weights/darknet19_448.conv.23.weights weights/darknet19.h5 && \
-    popd
+    tar xf VOCtrainval_11-May-2012.tar 
+#RUN popd 
+RUN pushd keras-YOLOv3-model-set/tools/dataset_converter/ && ls && \
+    python voc_annotation.py --dataset_path=/root/data/PascalVOC/VOCdevkit/ --output_path=/root/data/PascalVOC 
+#RUN popd 
+RUN pushd data/PascalVOC && cp -rf 2007_train.txt trainval.txt && cat 2007_val.txt >> trainval.txt && cat 2012_train.txt >> trainval.txt && cat 2012_val.txt >> trainval.txt && \ 
+    cp -rf trainval.txt 2007_test.txt /root/keras-YOLOv3-model-set/ 
+#RUN popd 
+RUN wget -O keras-YOLOv3-model-set/weights/yolov3.weights https://pjreddie.com/media/files/yolov3.weights 
+RUN wget -O keras-YOLOv3-model-set/weights/yolov3-tiny.weights https://pjreddie.com/media/files/yolov3-tiny.weights 
+RUN wget -O keras-YOLOv3-model-set/weights/yolov3-spp.weights https://pjreddie.com/media/files/yolov3-spp.weights 
+RUN wget -O keras-YOLOv3-model-set/weights/darknet53.conv.74.weights https://pjreddie.com/media/files/darknet53.conv.74 
+RUN wget -O keras-YOLOv3-model-set/weights/darknet19_448.conv.23.weights https://pjreddie.com/media/files/darknet19_448.conv.23 
+RUN wget -O keras-YOLOv3-model-set/weights/yolov2.weights http://pjreddie.com/media/files/yolo.weights 
+RUN wget -O keras-YOLOv3-model-set/weights/yolov2-voc.weights http://pjreddie.com/media/files/yolo-voc.weights 
+RUN pushd keras-YOLOv3-model-set/ && \
+    python tools/model_converter/convert.py cfg/yolov3.cfg weights/yolov3.weights weights/yolov3.h5 && \
+    python tools/model_converter/convert.py cfg/yolov3-tiny.cfg weights/yolov3-tiny.weights weights/yolov3-tiny.h5 && \
+    python tools/model_converter/convert.py cfg/yolov3-spp.cfg weights/yolov3-spp.weights weights/yolov3-spp.h5 && \
+    python tools/model_converter/convert.py cfg/yolov2.cfg weights/yolov2.weights weights/yolov2.h5 && \
+    python tools/model_converter/convert.py cfg/yolov2-voc.cfg weights/yolov2-voc.weights weights/yolov2-voc.h5 && \
+    python tools/model_converter/convert.py cfg/darknet53.cfg weights/darknet53.conv.74.weights weights/darknet53.h5 && \
+    python tools/model_converter/convert.py cfg/darknet19_448_body.cfg weights/darknet19_448.conv.23.weights weights/darknet19.h5
+#RUN popd
 
 # Optional: Prepare MS COCO 2017 dataset
 #RUN mkdir -p data/COCO2017 && \
