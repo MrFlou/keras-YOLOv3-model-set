@@ -869,8 +869,8 @@ def yolo3_postprocess_np(yolo_outputs, image_shape, anchors, num_classes, model_
 #Openvino quick scan a get raw output
 model_xml = f"logs\\035\\dump\\x2\\saved_model.xml"
 model_5h = f"logs\\035\\dump\\dump_model.h5"
-Test_Image = f"datasets\\Top_View\\labeled_images\\test\\cam_3_test_00000006.jpg"
-test_val = f"374,8,533,160,14 964,226,1086,370,14"
+Test_Image = f"datasets/Top_View/labeled_images/test/cam_6_test_00000022.jpg"
+test_val = f"24,567,185,666,14 169,90,327,208,14 811,24,922,163,14 1102,32,1240,166,14 794,310,912,450,14 608,430,728,563,14 644,632,749,773,14 719,631,806,760,14 1208,674,1289,821,14 91,846,245,960,14 394,351,485,453,14 1055,648,1200,816,14"
 test_val = test_val.split(" ")
 test_real = []
 for x in test_val:
@@ -928,11 +928,33 @@ endtime = time.time()
 tfStart = time.time()
 tFBoxes, tfClas, tfProb = getTFPredict(Test_Image,model_TF)
 tfStop = time.time()
-print("Truth: ",test_real[1])
-print("OpenVino: ",boxes[0],"Distance from Truth: ", np.linalg.norm(boxes[0]-test_real[1]))
-print("OpenVino Time: ",endtime- starttime)
-print("TensorFlow: ",tFBoxes[0],"Distance from Truth: ", np.linalg.norm(tFBoxes[0]-test_real[1]))
-print("TensorFlow Time: ",tfStop - tfStart)
+
+#Closest Guess
+OVminDist = 100000
+OVGuess = None
+for real in test_real:
+    for pred in boxes:
+        dist = np.linalg.norm(pred-real)
+        if OVminDist > dist:
+            OVminDist = dist
+            OVGuess = [pred, real]
+
+TFminDist = 100000
+TFGuess = None
+for real in test_real:
+    for pred in tFBoxes:
+        dist = np.linalg.norm(pred-real)
+        if TFminDist > dist:
+            TFminDist = dist
+            TFGuess = [pred, real]
+
+
+
+print("Truth: ",test_real,"\nNumber of Real:", len(test_real))
+print("OpenVino: ",OVGuess,"\nDistance from Truth: ", OVminDist)
+print("OpenVino Time: ",endtime- starttime,"\nNumber of Guesses:", len(boxes))
+print("TensorFlow: ",TFGuess,"\nDistance from Truth: ", TFminDist)
+print("TensorFlow Time: ",tfStop - tfStart,"\nNumber of Guesses:", len(tFBoxes))
 img = cv2.imread(Test_Image)
 
 
