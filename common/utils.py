@@ -107,6 +107,7 @@ def get_colors(number, bright=True):
 def get_dataset(annotation_file, shuffle=True):
     with open(annotation_file) as f:
         lines = f.readlines()
+        print("line: ", lines[0])
         lines = [line.strip() for line in lines]
 
     if shuffle:

@@ -10,6 +10,10 @@ import tensorflow.keras.backend as K
 from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint, ReduceLROnPlateau, LearningRateScheduler, EarlyStopping, TerminateOnNaN, LambdaCallback
 from tensorflow_model_optimization.sparsity import keras as sparsity
 
+from tensorflow.python.framework import graph_io
+from tensorflow.python.tools import freeze_graph
+from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
+
 from yolo5.model import get_yolo5_train_model
 from yolo5.data import yolo5_data_generator_wrapper, Yolo5DataGenerator
 from yolo3.model import get_yolo3_train_model
@@ -28,10 +32,9 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import tensorflow as tf
 optimize_tf_gpu(tf, K)
 
-
 def main(args):
     annotation_file = args.annotation_file
-    log_dir = os.path.join('logs', '000')
+    log_dir = os.path.join('logs', '035')
     classes_path = args.classes_path
     class_names = get_classes(classes_path)
     num_classes = len(class_names)
@@ -58,7 +61,7 @@ def main(args):
         save_best_only=True,
         period=1)
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, mode='min', patience=10, verbose=1, cooldown=0, min_lr=1e-10)
-    early_stopping = EarlyStopping(monitor='val_loss', min_delta=0, patience=50, verbose=1, mode='min')
+    early_stopping = EarlyStopping(monitor='val_loss', min_delta=0, patience=75, verbose=1, mode='min')
     checkpoint_clean = CheckpointCleanCallBack(log_dir, max_val_keep=5, max_eval_keep=2)
     terminate_on_nan = TerminateOnNaN()
 
@@ -175,7 +178,7 @@ def main(args):
     print("Transfer training stage")
     print('Train on {} samples, val on {} samples, with batch size {}, input_shape {}.'.format(num_train, num_val, args.batch_size, input_shape))
     #model.fit_generator(train_data_generator,
-    model.fit_generator(data_generator(dataset[:num_train], args.batch_size, input_shape, anchors, num_classes, args.enhance_augment, rescale_interval, multi_anchor_assign=args.multi_anchor_assign),
+    model.fit(data_generator(dataset[:num_train], args.batch_size, input_shape, anchors, num_classes, args.enhance_augment, rescale_interval, multi_anchor_assign=args.multi_anchor_assign),
             steps_per_epoch=max(1, num_train//args.batch_size),
             #validation_data=val_data_generator,
             validation_data=data_generator(dataset[num_train:], args.batch_size, input_shape, anchors, num_classes, multi_anchor_assign=args.multi_anchor_assign),
@@ -202,7 +205,7 @@ def main(args):
             # which request TF 2.x and have version compatibility
             import tensorflow_addons as tfa
             callbacks.remove(checkpoint)
-            avg_checkpoint = tfa.callbacks.AverageModelCheckpoint(filepath=os.path.join(log_dir, 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5'),
+            avg_checkpoint = tfa.callbacks.AverageModelCheckpoint(filepath=os.path.join(log_dir, 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}'),
                                                                   update_weights=True,
                                                                   monitor='val_loss',
                                                                   mode='min',
@@ -232,7 +235,7 @@ def main(args):
 
     print('Train on {} samples, val on {} samples, with batch size {}, input_shape {}.'.format(num_train, num_val, args.batch_size, input_shape))
     #model.fit_generator(train_data_generator,
-    model.fit_generator(data_generator(dataset[:num_train], args.batch_size, input_shape, anchors, num_classes, args.enhance_augment, rescale_interval, multi_anchor_assign=args.multi_anchor_assign),
+    model.fit(data_generator(dataset[:num_train], args.batch_size, input_shape, anchors, num_classes, args.enhance_augment, rescale_interval, multi_anchor_assign=args.multi_anchor_assign),
         steps_per_epoch=max(1, num_train//args.batch_size),
         #validation_data=val_data_generator,
         validation_data=data_generator(dataset[num_train:], args.batch_size, input_shape, anchors, num_classes, multi_anchor_assign=args.multi_anchor_assign),
@@ -249,30 +252,29 @@ def main(args):
     if args.model_pruning:
         model = sparsity.strip_pruning(model)
     model.save(os.path.join(log_dir, 'trained_final.h5'))
-
-
+    
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # Model definition options
-    parser.add_argument('--model_type', type=str, required=False, default='yolo3_mobilenet_lite',
-        help='YOLO model type: yolo3_mobilenet_lite/tiny_yolo3_mobilenet/yolo3_darknet/..., default=%(default)s')
+    parser.add_argument('--model_type', type=str, required=False, default='yolo3_mobilenetv3small_ultralite',
+        help= 'YOLO model type: yolo3_mobilenet_lite/tiny_yolo3_mobilenet/yolo3_darknet/..., default=%(default)s')
     parser.add_argument('--anchors_path', type=str, required=False, default=os.path.join('configs', 'yolo3_anchors.txt'),
-        help='path to anchor definitions, default=%(default)s')
-    parser.add_argument('--model_image_size', type=str, required=False, default='416x416',
+        help= 'path to anchor definitions, default=%(default)s')
+    parser.add_argument('--model_image_size', type=str, required=False, default='384x384',
         help = "Initial model image input size as <height>x<width>, default=%(default)s")
     parser.add_argument('--weights_path', type=str, required=False, default=None,
         help = "Pretrained model/weights file for fine tune")
 
     # Data options
-    parser.add_argument('--annotation_file', type=str, required=False, default='trainval.txt',
-        help='train annotation txt file, default=%(default)s')
-    parser.add_argument('--val_annotation_file', type=str, required=False, default=None,
-        help='val annotation txt file, default=%(default)s')
-    parser.add_argument('--val_split', type=float, required=False, default=0.1,
+    parser.add_argument('--annotation_file', type=str, required=False, default='datasets\\Top_View\\labeled_images\\train_anno.txt',
+        help= 'train annotation txt file, default=%(default)s')
+    parser.add_argument('--val_annotation_file', type=str, required=False, default='datasets\\Top_View\\labeled_images\\test_anno.txt',
+        help= 'val annotation txt file, default=%(default)s')
+    parser.add_argument('--val_split', type=float, required=False, default=0,
         help = "validation data persentage in dataset if no val dataset provide, default=%(default)s")
     parser.add_argument('--classes_path', type=str, required=False, default=os.path.join('configs', 'voc_classes.txt'),
-        help='path to class definitions, default=%(default)s')
+        help= 'path to class definitions, default=%(default)s')
 
     # Training options
     parser.add_argument('--batch_size', type=int, required=False, default=16,
@@ -285,16 +287,16 @@ if __name__ == '__main__':
         help = "weights average type, default=%(default)s")
     parser.add_argument('--decay_type', type=str, required=False, default=None, choices=[None, 'cosine', 'exponential', 'polynomial', 'piecewise_constant'],
         help = "Learning rate decay type, default=%(default)s")
-    parser.add_argument('--transfer_epoch', type=int, required=False, default=20,
+    parser.add_argument('--transfer_epoch', type=int, required=False, default=5,
         help = "Transfer training (from Imagenet) stage epochs, default=%(default)s")
     parser.add_argument('--freeze_level', type=int,required=False, default=None, choices=[None, 0, 1, 2],
         help = "Freeze level of the model in transfer training stage. 0:NA/1:backbone/2:only open prediction layer")
     parser.add_argument('--init_epoch', type=int,required=False, default=0,
         help = "Initial training epochs for fine tune training, default=%(default)s")
-    parser.add_argument('--total_epoch', type=int,required=False, default=250,
+    parser.add_argument('--total_epoch', type=int,required=False, default=127,
         help = "Total training epochs, default=%(default)s")
-    parser.add_argument('--multiscale', default=False, action="store_true",
-        help='Whether to use multiscale training')
+    parser.add_argument('--multiscale', default=True, action="store_true",
+        help= "Whether to use multiscale training")
     parser.add_argument('--rescale_interval', type=int, required=False, default=10,
         help = "Number of iteration(batches) interval to rescale input size, default=%(default)s")
     parser.add_argument('--enhance_augment', type=str, required=False, default=None, choices=[None, 'mosaic'],
@@ -306,19 +308,19 @@ if __name__ == '__main__':
     parser.add_argument('--elim_grid_sense', default=False, action="store_true",
         help = "Eliminate grid sensitivity")
     parser.add_argument('--data_shuffle', default=False, action="store_true",
-        help='Whether to shuffle train/val data for cross-validation')
+        help= 'Whether to shuffle train/val data for cross-validation')
     parser.add_argument('--gpu_num', type=int, required=False, default=1,
-        help='Number of GPU to use, default=%(default)s')
+        help= 'Number of GPU to use, default=%(default)s')
     parser.add_argument('--model_pruning', default=False, action="store_true",
-        help='Use model pruning for optimization, only for TF 1.x')
+        help= 'Use model pruning for optimization, only for TF 1.x')
 
     # Evaluation options
     parser.add_argument('--eval_online', default=False, action="store_true",
-        help='Whether to do evaluation on validation dataset during training')
+        help= 'Whether to do evaluation on validation dataset during training')
     parser.add_argument('--eval_epoch_interval', type=int, required=False, default=10,
         help = "Number of iteration(epochs) interval to do evaluation, default=%(default)s")
     parser.add_argument('--save_eval_checkpoint', default=False, action="store_true",
-        help='Whether to save checkpoint with best evaluation result')
+        help= 'Whether to save checkpoint with best evaluation result')
 
     args = parser.parse_args()
     height, width = args.model_image_size.split('x')

@@ -35,16 +35,16 @@ optimize_tf_gpu(tf, K)
 #tf.enable_eager_execution()
 
 default_config = {
-        "model_type": 'tiny_yolo3_darknet',
-        "weights_path": os.path.join('weights', 'yolov3-tiny.h5'),
+        "model_type": 'yolo3_mobilenetv3small_ultralite',
+        "weights_path": "logs\\035\\ep075-loss16.554-val_loss16.757.h5", #os.path.join('weights', 'yolov3-tiny.h5'),
         "pruning_model": False,
-        "anchors_path": os.path.join('configs', 'tiny_yolo3_anchors.txt'),
-        "classes_path": os.path.join('configs', 'coco_classes.txt'),
+        "anchors_path": os.path.join('configs', 'yolo3_anchors.txt'),
+        "classes_path": os.path.join('configs', 'voc_classes.txt'),
         "score" : 0.1,
         "iou" : 0.4,
         "model_image_size" : (416, 416),
         "elim_grid_sense": False,
-        #"gpu_num" : 1,
+        "gpu_num" : 1,
     }
 
 
@@ -67,6 +67,13 @@ class YOLO_np(object):
         self.colors = get_colors(len(self.class_names))
         K.set_learning_phase(0)
         self.yolo_model = self._generate_model()
+
+
+#import tensorflow as tf
+#
+#model = tf.keras.models.load_model('trained_keras_model.h5')
+#tf.saved_model.save(model, '/tmp/my_saved_model')
+
 
     def _generate_model(self):
         '''to generate the bounding boxes'''
@@ -142,6 +149,10 @@ class YOLO_np(object):
         elif self.model_type.startswith('yolo3_') or self.model_type.startswith('yolo4_') or \
              self.model_type.startswith('tiny_yolo3_') or self.model_type.startswith('tiny_yolo4_'):
             # YOLOv3 & v4 entrance
+            #print("prediction: ", np.array(self.yolo_model.predict(image_data)[0]).shape)
+            #print("prediction: ", np.array(self.yolo_model.predict(image_data)[1]).shape)
+            #print("prediction: ", np.array(self.yolo_model.predict(image_data)[2]).shape)
+            #print(yolo3_postprocess_np(self.yolo_model.predict(image_data), image_shape, self.anchors, len(self.class_names), self.model_image_size, max_boxes=100, confidence=self.score, iou_threshold=self.iou, elim_grid_sense=self.elim_grid_sense))
             out_boxes, out_classes, out_scores = yolo3_postprocess_np(self.yolo_model.predict(image_data), image_shape, self.anchors, len(self.class_names), self.model_image_size, max_boxes=100, confidence=self.score, iou_threshold=self.iou, elim_grid_sense=self.elim_grid_sense)
         elif self.model_type.startswith('yolo2_') or self.model_type.startswith('tiny_yolo2_'):
             # YOLOv2 entrance

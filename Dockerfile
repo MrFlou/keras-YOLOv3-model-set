@@ -136,7 +136,7 @@ RUN wget -O data/PascalVOC/VOCtrainval_06-Nov-2007.tar http://host.robots.ox.ac.
 RUN wget -O data/PascalVOC/VOCtest_06-Nov-2007.tar http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtest_06-Nov-2007.tar 
 RUN wget -O data/PascalVOC/VOCtrainval_11-May-2012.tar http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar 
 RUN wget -O data/PascalVOC/VOC2012test.tar http://pjreddie.com/media/files/VOC2012test.tar 
-RUN pushd data/
+#RUN pushd data/
 RUN ls && pushd data/PascalVOC/ && \
     tar xf VOCtest_06-Nov-2007.tar && \
     tar xf VOCtrainval_06-Nov-2007.tar && \
@@ -155,14 +155,14 @@ RUN wget -O keras-YOLOv3-model-set/weights/darknet53.conv.74.weights https://pjr
 RUN wget -O keras-YOLOv3-model-set/weights/darknet19_448.conv.23.weights https://pjreddie.com/media/files/darknet19_448.conv.23 
 RUN wget -O keras-YOLOv3-model-set/weights/yolov2.weights http://pjreddie.com/media/files/yolo.weights 
 RUN wget -O keras-YOLOv3-model-set/weights/yolov2-voc.weights http://pjreddie.com/media/files/yolo-voc.weights 
-RUN pushd keras-YOLOv3-model-set/ && \
-    python tools/model_converter/convert.py cfg/yolov3.cfg weights/yolov3.weights weights/yolov3.h5 && \
-    python tools/model_converter/convert.py cfg/yolov3-tiny.cfg weights/yolov3-tiny.weights weights/yolov3-tiny.h5 && \
-    python tools/model_converter/convert.py cfg/yolov3-spp.cfg weights/yolov3-spp.weights weights/yolov3-spp.h5 && \
-    python tools/model_converter/convert.py cfg/yolov2.cfg weights/yolov2.weights weights/yolov2.h5 && \
-    python tools/model_converter/convert.py cfg/yolov2-voc.cfg weights/yolov2-voc.weights weights/yolov2-voc.h5 && \
-    python tools/model_converter/convert.py cfg/darknet53.cfg weights/darknet53.conv.74.weights weights/darknet53.h5 && \
-    python tools/model_converter/convert.py cfg/darknet19_448_body.cfg weights/darknet19_448.conv.23.weights weights/darknet19.h5
+#RUN pushd keras-YOLOv3-model-set/ && \
+#    python tools/model_converter/convert.py cfg/yolov3.cfg weights/yolov3.weights weights/yolov3.h5 && \
+#    python tools/model_converter/convert.py cfg/yolov3-tiny.cfg weights/yolov3-tiny.weights weights/yolov3-tiny.h5 && \
+#    python tools/model_converter/convert.py cfg/yolov3-spp.cfg weights/yolov3-spp.weights weights/yolov3-spp.h5 && \
+#    python tools/model_converter/convert.py cfg/yolov2.cfg weights/yolov2.weights weights/yolov2.h5 && \
+#    python tools/model_converter/convert.py cfg/yolov2-voc.cfg weights/yolov2-voc.weights weights/yolov2-voc.h5 && \
+#    python tools/model_converter/convert.py cfg/darknet53.cfg weights/darknet53.conv.74.weights weights/darknet53.h5 && \
+#    python tools/model_converter/convert.py cfg/darknet19_448_body.cfg weights/darknet19_448.conv.23.weights weights/darknet19.h5
 #RUN popd
 
 # Optional: Prepare MS COCO 2017 dataset
