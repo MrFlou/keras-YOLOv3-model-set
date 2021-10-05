@@ -36,7 +36,7 @@ optimize_tf_gpu(tf, K)
 
 default_config = {
         "model_type": 'yolo3_mobilenetv3small_ultralite',
-        "weights_path": "logs\\035\\ep075-loss16.554-val_loss16.757.h5", #os.path.join('weights', 'yolov3-tiny.h5'),
+        "weights_path": "logs\\tiny_yolo3_mobilenetv3small_ultralite_001\\ep038-loss6.040-val_loss6.735.h5", #os.path.join('weights', 'yolov3-tiny.h5'),
         "pruning_model": False,
         "anchors_path": os.path.join('configs', 'yolo3_anchors.txt'),
         "classes_path": os.path.join('configs', 'voc_classes.txt'),

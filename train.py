@@ -34,7 +34,7 @@ optimize_tf_gpu(tf, K)
 
 def main(args):
     annotation_file = args.annotation_file
-    log_dir = os.path.join('logs', '035')
+    log_dir = os.path.join('logs', 'yolo3_mobilenetv3small_lite_001')
     classes_path = args.classes_path
     class_names = get_classes(classes_path)
     num_classes = len(class_names)
@@ -248,16 +248,20 @@ def main(args):
         max_queue_size=10,
         callbacks=callbacks)
 
-    # Finally store model
+    # Finally store model384
     if args.model_pruning:
         model = sparsity.strip_pruning(model)
     model.save(os.path.join(log_dir, 'trained_final.h5'))
     
 
+# Remember to dump as TF2 saved model
+# Convert with python mo_tf.py --saved_model_dir "E:\Top-View-Re_ID\keras-YOLOv3-model-set\logs\tiny_yolo3_mobilenetv3small_ultralite_001\dump\val6-735" --output_dir "E:\Top-View-Re_ID\keras-YOLOv3-model-set\logs\tiny_yolo3_mobilenetv3small_ultralite_001\dump" --tensorboard "E:\Top-View-Re_ID\keras-YOLOv3-model-set\logs\tiny_yolo3_mobilenetv3small_ultralite_001\dump/log" --input_shape "(1,384,384,3)" --output "Identity,Identity_1,Identity_2"
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # Model definition options
-    parser.add_argument('--model_type', type=str, required=False, default='yolo3_mobilenetv3small_ultralite',
+    parser.add_argument('--model_type', type=str, required=False, default='yolo3_mobilenetv3small_lite',
         help= 'YOLO model type: yolo3_mobilenet_lite/tiny_yolo3_mobilenet/yolo3_darknet/..., default=%(default)s')
     parser.add_argument('--anchors_path', type=str, required=False, default=os.path.join('configs', 'yolo3_anchors.txt'),
         help= 'path to anchor definitions, default=%(default)s')
@@ -267,17 +271,17 @@ if __name__ == '__main__':
         help = "Pretrained model/weights file for fine tune")
 
     # Data options
-    parser.add_argument('--annotation_file', type=str, required=False, default='datasets\\Top_View\\labeled_images\\train_anno.txt',
+    parser.add_argument('--annotation_file', type=str, required=False, default='datasets\\Aal_airport\\all_zed_anno.txt',
         help= 'train annotation txt file, default=%(default)s')
-    parser.add_argument('--val_annotation_file', type=str, required=False, default='datasets\\Top_View\\labeled_images\\test_anno.txt',
+    parser.add_argument('--val_annotation_file', type=str, required=False, default=None,
         help= 'val annotation txt file, default=%(default)s')
-    parser.add_argument('--val_split', type=float, required=False, default=0,
+    parser.add_argument('--val_split', type=float, required=False, default=0.10,
         help = "validation data persentage in dataset if no val dataset provide, default=%(default)s")
     parser.add_argument('--classes_path', type=str, required=False, default=os.path.join('configs', 'voc_classes.txt'),
         help= 'path to class definitions, default=%(default)s')
 
     # Training options
-    parser.add_argument('--batch_size', type=int, required=False, default=16,
+    parser.add_argument('--batch_size', type=int, required=False, default=12,
         help = "Batch size for train, default=%(default)s")
     parser.add_argument('--optimizer', type=str, required=False, default='adam', choices=['adam', 'rmsprop', 'sgd'],
         help = "optimizer for training (adam/rmsprop/sgd), default=%(default)s")
@@ -293,7 +297,7 @@ if __name__ == '__main__':
         help = "Freeze level of the model in transfer training stage. 0:NA/1:backbone/2:only open prediction layer")
     parser.add_argument('--init_epoch', type=int,required=False, default=0,
         help = "Initial training epochs for fine tune training, default=%(default)s")
-    parser.add_argument('--total_epoch', type=int,required=False, default=127,
+    parser.add_argument('--total_epoch', type=int,required=False, default=256,
         help = "Total training epochs, default=%(default)s")
     parser.add_argument('--multiscale', default=True, action="store_true",
         help= "Whether to use multiscale training")

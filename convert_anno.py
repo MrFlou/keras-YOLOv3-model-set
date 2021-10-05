@@ -13,9 +13,7 @@ def round_half_up(n, decimals=0):
 
 #'/path/to/000001.jpg': {'100,120,200,235':'dog', '85,63,156,128':'car', ...},
 with open('train_anno.txt', 'a') as the_anno:
-    #print("Hello?")
     for txt in tqdm.tqdm(files):
-        #print("Hello?2")
         txt_file = open(txt,"r")
         boxes = txt_file.readlines()
         image = cv2.imread(txt[:-3]+"jpg")

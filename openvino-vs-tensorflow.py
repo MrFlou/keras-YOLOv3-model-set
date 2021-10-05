@@ -867,8 +867,8 @@ def yolo3_postprocess_np(yolo_outputs, image_shape, anchors, num_classes, model_
 
 
 #Openvino quick scan a get raw output
-model_xml = f"logs\\035\\dump\\x2\\saved_model.xml"
-model_5h = f"logs\\035\\dump\\dump_model.h5"
+model_xml = f"logs\\tiny_yolo3_mobilenetv3small_ultralite_001\\dump\\saved_model.xml"
+model_5h = f"logs\\tiny_yolo3_mobilenetv3small_ultralite_001\\dump\\val6-735.h5"
 Test_Image = f"datasets/Top_View/labeled_images/test/cam_6_test_00000022.jpg"
 test_val = f"24,567,185,666,14 169,90,327,208,14 811,24,922,163,14 1102,32,1240,166,14 794,310,912,450,14 608,430,728,563,14 644,632,749,773,14 719,631,806,760,14 1208,674,1289,821,14 91,846,245,960,14 394,351,485,453,14 1055,648,1200,816,14"
 test_val = test_val.split(" ")
@@ -881,7 +881,7 @@ test_real = np.array(test_real,dtype=np.int)
 def prepNetworks(OpenVino,TensorFlow):
     custom_objects = {"hard_swish": hard_swish}
     TF_net = tf.keras.models.load_model(TensorFlow,custom_objects=custom_objects)
-    TF_net.predict(tf.zeros((1,416,416,3)))
+    TF_net.predict(tf.zeros((1,384,384,3)))
     ie = IECore()
     net = ie.read_network(model=OpenVino)
     OV_net = ie.load_network(network=net, device_name="MYRIAD")
@@ -891,10 +891,10 @@ def prepNetworks(OpenVino,TensorFlow):
 def getTFPredict(_image,_network):
     img = cv2.imread(_image)
     first = img.shape
-    img = cv2.resize(img,(416,416))
+    img = cv2.resize(img,(384,384))
     second = img.shape
     images = Image.open(_image)
-    images = preprocess_image(images,(416,416))
+    images = preprocess_image(images,(384,384))
 
     outTF = _network.predict(images)
     box_Loc, box_Classes, box_Prob = yolo3_postprocess_np(outTF,first[:-1],get_anchors("configs\\yolo3_anchors.txt"),len(get_classes("configs\\voc_classes.txt")),second[:-1])
@@ -904,11 +904,11 @@ def getTFPredict(_image,_network):
 def getOVPredict(_image,_network):
 
     images = Image.open(_image)
-    images = preprocess_image(images,(416,416))
+    images = preprocess_image(images,(384,384))
     images = np.transpose(images,(0,3,1,2))
     img = cv2.imread(_image)
     first = img.shape
-    img = cv2.resize(img,(416,416))
+    img = cv2.resize(img,(384,384))
     second = img.shape
 
     input_layer = next(iter(_network.input_info))
