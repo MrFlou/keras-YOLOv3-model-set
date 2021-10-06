@@ -6,7 +6,7 @@ import os, sys, argparse
 import numpy as np
 from operator import mul
 from functools import reduce
-import MNN
+#import MNN
 import onnxruntime
 from tensorflow.keras.models import load_model
 from tensorflow.lite.python import interpreter as interpreter_wrapper
@@ -22,25 +22,53 @@ from common.utils import get_classes, get_anchors, get_colors, draw_boxes, get_c
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
-def validate_yolo_model(model_path, image_file, anchors, class_names, model_image_size, elim_grid_sense, v5_decode, loop_count):
+def validate_yolo_model(model_path, image_file, anchors, class_names, model_image_size, elim_grid_sense, v5_decode, loop_count, TF_mode):
 
     custom_object_dict = get_custom_objects()
     model = load_model(model_path, compile=False, custom_objects=custom_object_dict)
-
+    OpenVino_path = f"logs\\tiny_yolo3_mobilenetv3small_ultralite_001\\dump\\saved_model.xml"
+    from openvino.inference_engine import IECore
+    ie = IECore()
+    net = ie.read_network(model=OpenVino_path)
+    _network = ie.load_network(network=net, device_name="CPU")
     img = Image.open(image_file)
     image = np.array(img, dtype='uint8')
     image_data = preprocess_image(img, model_image_size)
     #origin image shape, in (height, width) format
     image_shape = tuple(reversed(img.size))
-
+    input_layer = next(iter(_network.input_info))
+    images = np.transpose(image_data,(0,3,1,2))
+    res = _network.infer(inputs={input_layer: images})
+    prediction = [np.transpose(res['StatefulPartitionedCall/model/predict_conv_1/BiasAdd/Add'],(0,2,3,1)),np.transpose(res['StatefulPartitionedCall/model/predict_conv_2/BiasAdd/Add'],(0,2,3,1)),np.transpose(res['StatefulPartitionedCall/model/predict_conv_3/BiasAdd/Add'],(0,2,3,1))]
     # predict once first to bypass the model building time
-    model.predict([image_data])
 
-    start = time.time()
-    for i in range(loop_count):
-        prediction = model.predict([image_data])
-    end = time.time()
-    print("Average Inference time: {:.8f}ms".format((end - start) * 1000 /loop_count))
+    image_array = np.vstack([image_data]*loop_count)
+    #print(image_array.shape)
+    pp = model.predict(image_data)
+
+    model.predict(image_data)
+    model([image_data],training=False)
+
+
+    if TF_mode == 1:
+        start = time.time()
+        prediction = model.predict(image_array)        
+        end = time.time()
+        prediction = [[prediction[0][2]],[prediction[1][2]],[prediction[2][2]]]
+    elif TF_mode == 2:
+        start = time.time()
+        for i in range(loop_count):
+            res = _network.infer(inputs={input_layer: images})
+            prediction = [np.transpose(res['StatefulPartitionedCall/model/predict_conv_1/BiasAdd/Add'],(0,2,3,1)),np.transpose(res['StatefulPartitionedCall/model/predict_conv_2/BiasAdd/Add'],(0,2,3,1)),np.transpose(res['StatefulPartitionedCall/model/predict_conv_3/BiasAdd/Add'],(0,2,3,1))]
+        end = time.time()
+    elif TF_mode == 3:
+        start = time.time()
+        for i in range(loop_count):
+            prediction = model.predict([image_data])
+        end = time.time()
+    print("Average Inference time: {:.8f}ms (Total time: {:.8f}s)".format((end - start) * 1000 /loop_count,(end - start)))
+    
+    
     if type(prediction) is not list:
         prediction = [prediction]
 
@@ -354,7 +382,7 @@ def handle_prediction(prediction, image_file, image, image_shape, anchors, class
     print('Found {} boxes for {}'.format(len(boxes), image_file))
     for box, cls, score in zip(boxes, classes, scores):
         xmin, ymin, xmax, ymax = box
-        print("Class: {}, Score: {}, Box: {},{}".format(class_names[cls], score, (xmin, ymin), (xmax, ymax)))
+        print("Class: {}, Score: {:0.12f}, Box: {},{}".format(class_names[cls], score, (xmin, ymin), (xmax, ymax)))
 
     colors = get_colors(len(class_names))
     image = draw_boxes(image, boxes, classes, scores, class_names, colors)
@@ -368,12 +396,12 @@ def main():
     parser.add_argument('--model_path', help='model file to predict', type=str, required=True)
     parser.add_argument('--image_file', help='image file to predict', type=str, required=True)
     parser.add_argument('--anchors_path', help='path to anchor definitions', type=str, required=True)
-    parser.add_argument('--classes_path', help='path to class definitions, default=%(default)s', type=str, default='../../configs/voc_classes.txt')
-    parser.add_argument('--model_image_size', help='model image input size as <height>x<width>, default=%(default)s', type=str, default='416x416')
+    parser.add_argument('--classes_path', help='path to class definitions, default=%(default)s', type=str, default='configs/voc_classes.txt')
+    parser.add_argument('--model_image_size', help='model image input size as <height>x<width>, default=%(default)s', type=str, default='384x384')
     parser.add_argument('--elim_grid_sense', help="Eliminate grid sensitivity", default=False, action="store_true")
     parser.add_argument('--v5_decode', help="Use YOLOv5 prediction decode", default=False, action="store_true")
-    parser.add_argument('--loop_count', help='loop inference for certain times', type=int, default=1)
-
+    parser.add_argument('--loop_count', help='loop inference for certain times', type=int, default=28)
+    parser.add_argument('--TF_mode',help='TF:1 or OV:2 or TF-single:3',type=int,default=1)
     args = parser.parse_args()
 
     # param parse
@@ -381,6 +409,7 @@ def main():
     class_names = get_classes(args.classes_path)
     height, width = args.model_image_size.split('x')
     model_image_size = (int(height), int(width))
+    TF_mode = args.TF_mode
     assert (model_image_size[0]%32 == 0 and model_image_size[1]%32 == 0), 'model_image_size should be multiples of 32'
 
     # support of tflite model
@@ -397,10 +426,9 @@ def main():
         validate_yolo_model_onnx(args.model_path, args.image_file, anchors, class_names, args.elim_grid_sense, args.v5_decode, args.loop_count)
     # normal keras h5 model
     elif args.model_path.endswith('.h5'):
-        validate_yolo_model(args.model_path, args.image_file, anchors, class_names, model_image_size, args.elim_grid_sense, args.v5_decode, args.loop_count)
+        validate_yolo_model(args.model_path, args.image_file, anchors, class_names, model_image_size, args.elim_grid_sense, args.v5_decode, args.loop_count, args.TF_mode)
     else:
         raise ValueError('invalid model file')
-
 
 if __name__ == '__main__':
     main()
