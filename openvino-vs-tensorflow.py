@@ -884,7 +884,7 @@ def prepNetworks(OpenVino,TensorFlow):
     TF_net.predict(tf.zeros((1,384,384,3)))
     ie = IECore()
     net = ie.read_network(model=OpenVino)
-    OV_net = ie.load_network(network=net, device_name="MYRIAD")
+    OV_net = ie.load_network(network=net, device_name="CPU")
 
     return OV_net, TF_net
 
@@ -934,6 +934,8 @@ OVminDist = 100000
 OVGuess = None
 for real in test_real:
     for pred in boxes:
+        dist1 = np.linalg.norm(pred[0:1]-real[0:1])
+        dist2 = np.linalg.norm(pred[2:3]-real[2:3])
         dist = np.linalg.norm(pred-real)
         if OVminDist > dist:
             OVminDist = dist
@@ -943,6 +945,8 @@ TFminDist = 100000
 TFGuess = None
 for real in test_real:
     for pred in tFBoxes:
+        dist1 = np.linalg.norm(pred[0:1]-real[0:1])
+        dist2 = np.linalg.norm(pred[2:3]-real[2:3])
         dist = np.linalg.norm(pred-real)
         if TFminDist > dist:
             TFminDist = dist
@@ -950,7 +954,7 @@ for real in test_real:
 
 
 
-print("Truth: ",test_real,"\nNumber of Real:", len(test_real))
+print("Truth example: ",test_real[4],"\nNumber of Real:", len(test_real))
 print("OpenVino: ",OVGuess,"\nDistance from Truth: ", OVminDist)
 print("OpenVino Time: ",endtime- starttime,"\nNumber of Guesses:", len(boxes))
 print("TensorFlow: ",TFGuess,"\nDistance from Truth: ", TFminDist)
@@ -958,9 +962,14 @@ print("TensorFlow Time: ",tfStop - tfStart,"\nNumber of Guesses:", len(tFBoxes))
 img = cv2.imread(Test_Image)
 
 
-image = cv2.rectangle(img, (test_real[1][0],test_real[1][1]), (test_real[1][2],test_real[1][3]), (0,255,0), 2)
-image = cv2.rectangle(image, (tFBoxes[0][0],tFBoxes[0][1]), (tFBoxes[0][2],tFBoxes[0][3]), (0,0,255), 2)
-image = cv2.rectangle(image, (boxes[0][0],boxes[0][1]), (boxes[0][2],boxes[0][3]), (255,0,0), 2)
+for x in test_real:
+    image = cv2.rectangle(img, (x[0],x[1]), (x[2],x[3]), (0,255,0), 2)
+for x in range(len(tFBoxes)):
+    cv2.putText(image, str(tfProb[x])[:4], (tFBoxes[x][0],tFBoxes[x][1]+12), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
+    #image = cv2.rectangle(image, (tFBoxes[x][0],tFBoxes[x][1]), (tFBoxes[x][2],tFBoxes[x][3]), (0,0,255), 2)
+for x in range(len(boxes)):
+    cv2.putText(image, str(OVProb[x])[:4], (boxes[x][0],boxes[x][1]+48), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,0,0), 2)
+    #image = cv2.rectangle(image, (boxes[x][0],boxes[x][1]), (boxes[x][2],boxes[x][3]), (255,0,0), 2)
 cv2.imshow("window_name", image)
 key = cv2.waitKey()#pauses for 3 seconds before fetching next image
 if key == 27:#if ESC is pressed, exit loop
