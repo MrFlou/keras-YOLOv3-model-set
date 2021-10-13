@@ -255,13 +255,14 @@ def main(args):
     
 
 # Remember to dump as TF2 saved model
-# Convert with python mo_tf.py --saved_model_dir "E:\Top-View-Re_ID\keras-YOLOv3-model-set\logs\tiny_yolo3_mobilenetv3small_ultralite_001\dump\val6-735" --output_dir "E:\Top-View-Re_ID\keras-YOLOv3-model-set\logs\tiny_yolo3_mobilenetv3small_ultralite_001\dump" --tensorboard "E:\Top-View-Re_ID\keras-YOLOv3-model-set\logs\tiny_yolo3_mobilenetv3small_ultralite_001\dump/log" --input_shape "(1,384,384,3)" --output "Identity,Identity_1,Identity_2"
+# cd "C:\Program Files (x86)\Intel\openvino_2021.4.582\deployment_tools\model_optimizer"
+# python mo_tf.py --saved_model_dir "E:\Top-View-Re_ID\keras-YOLOv3-model-set\logs\tiny_yolo3_mobilenetv3small_ultralite_001\dump\val6-735" --output_dir "E:\Top-View-Re_ID\keras-YOLOv3-model-set\logs\tiny_yolo3_mobilenetv3small_ultralite_001\dump" --tensorboard "E:\Top-View-Re_ID\keras-YOLOv3-model-set\logs\tiny_yolo3_mobilenetv3small_ultralite_001\dump/log" --input_shape "(1,384,384,3)" --output "Identity,Identity_1,Identity_2"
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # Model definition options
-    parser.add_argument('--model_type', type=str, required=False, default='yolo3_mobilenetv3small_lite',
+    parser.add_argument('--model_type', type=str, required=False, default='yolo3_mobilenetv2_lite',
         help= 'YOLO model type: yolo3_mobilenet_lite/tiny_yolo3_mobilenet/yolo3_darknet/..., default=%(default)s')
     parser.add_argument('--anchors_path', type=str, required=False, default=os.path.join('configs', 'yolo3_anchors.txt'),
         help= 'path to anchor definitions, default=%(default)s')
