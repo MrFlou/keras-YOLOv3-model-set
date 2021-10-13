@@ -332,25 +332,29 @@ def yolo_predict_onnx(model, image, anchors, num_classes, conf_threshold, elim_g
     return pred_boxes, pred_classes, pred_scores
 
 # OpenVinoTest
-OpenVino_path = f"logs\\tiny_yolo3_mobilenetv3small_ultralite_001\\dump\\saved_model.xml"
+OpenVino_path = f"logs\\Trained\\yolo2_mobilenetv2_lite_101\\dump\\saved_model.xml"
 from openvino.inference_engine import IECore
 ie = IECore()
 net = ie.read_network(model=OpenVino_path)
-_network = ie.load_network(network=net, device_name="CPU")
+_network = ie.load_network(network=net, device_name="MYRIAD")
 
 def yolo_predict_keras(model, image, anchors, num_classes, model_image_size, conf_threshold, elim_grid_sense, v5_decode):
     image_data = preprocess_image(image, model_image_size)
     
     
 
-    #images = np.transpose(image_data,(0,3,1,2))
+    images = np.transpose(image_data,(0,3,1,2))
+
     #origin image shape, in (height, width) format
     image_shape = tuple(reversed(image.size))
-    #input_layer = next(iter(_network.input_info))
-    #res = _network.infer(inputs={input_layer: images})
+    input_layer = next(iter(_network.input_info))
+    res = _network.infer(inputs={input_layer: images})
+    #print(np.transpose(res['StatefulPartitionedCall/model/predict_conv/BiasAdd/Add'],(0,2,3,1)).shape)
+    prediction = np.array(np.transpose(res['StatefulPartitionedCall/model/predict_conv/BiasAdd/Add'],(0,2,3,1)))
     #prediction = [np.transpose(res['StatefulPartitionedCall/model/predict_conv_1/BiasAdd/Add'],(0,2,3,1)),np.transpose(res['StatefulPartitionedCall/model/predict_conv_2/BiasAdd/Add'],(0,2,3,1)),np.transpose(res['StatefulPartitionedCall/model/predict_conv_3/BiasAdd/Add'],(0,2,3,1))]
     
-    prediction = model.predict([image_data])
+
+    #prediction = model.predict([image_data])
 
     if len(anchors) == 5:
         # YOLOv2 use 5 anchors

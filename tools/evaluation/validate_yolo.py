@@ -11,6 +11,7 @@ import onnxruntime
 from tensorflow.keras.models import load_model
 from tensorflow.lite.python import interpreter as interpreter_wrapper
 import tensorflow as tf
+from tensorflow.python import training
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..'))
 from yolo5.postprocess_np import yolo5_postprocess_np
@@ -26,11 +27,11 @@ def validate_yolo_model(model_path, image_file, anchors, class_names, model_imag
 
     custom_object_dict = get_custom_objects()
     model = load_model(model_path, compile=False, custom_objects=custom_object_dict)
-    OpenVino_path = f"logs\\tiny_yolo3_mobilenetv3small_ultralite_001\\dump\\saved_model.xml"
+    OpenVino_path = f"logs\\Trained\\yolo5_mobilenetv2_lite_101\\dump\\saved_model.xml"
     from openvino.inference_engine import IECore
     ie = IECore()
     net = ie.read_network(model=OpenVino_path)
-    _network = ie.load_network(network=net, device_name="CPU")
+    _network = ie.load_network(network=net, device_name="MYRIAD") #CPU or MYRIAD
     img = Image.open(image_file)
     image = np.array(img, dtype='uint8')
     image_data = preprocess_image(img, model_image_size)
@@ -39,10 +40,12 @@ def validate_yolo_model(model_path, image_file, anchors, class_names, model_imag
     input_layer = next(iter(_network.input_info))
     images = np.transpose(image_data,(0,3,1,2))
     res = _network.infer(inputs={input_layer: images})
-    prediction = [np.transpose(res['StatefulPartitionedCall/model/predict_conv_1/BiasAdd/Add'],(0,2,3,1)),np.transpose(res['StatefulPartitionedCall/model/predict_conv_2/BiasAdd/Add'],(0,2,3,1)),np.transpose(res['StatefulPartitionedCall/model/predict_conv_3/BiasAdd/Add'],(0,2,3,1))]
+    #print(res)
+    #prediction = [np.transpose(res['StatefulPartitionedCall/model/predict_conv_1/BiasAdd/Add'],(0,2,3,1)),np.transpose(res['StatefulPartitionedCall/model/predict_conv_2/BiasAdd/Add'],(0,2,3,1)),np.transpose(res['StatefulPartitionedCall/model/predict_conv_3/BiasAdd/Add'],(0,2,3,1))]
     # predict once first to bypass the model building time
 
-    image_array = np.vstack([image_data]*loop_count)
+    
+    
     #print(image_array.shape)
     pp = model.predict(image_data)
 
@@ -51,6 +54,7 @@ def validate_yolo_model(model_path, image_file, anchors, class_names, model_imag
 
 
     if TF_mode == 1:
+        image_array = np.vstack([image_data]*loop_count)
         start = time.time()
         prediction = model.predict(image_array)        
         end = time.time()
@@ -66,6 +70,14 @@ def validate_yolo_model(model_path, image_file, anchors, class_names, model_imag
         for i in range(loop_count):
             prediction = model.predict([image_data])
         end = time.time()
+    elif TF_mode ==4:
+        image_array = np.vstack([image_data]*loop_count)
+        start = time.time()
+        prediction = model(image_array,training=False)
+        #for i in range(loop_count):
+        #    prediction = model(image_data,training=False)
+        end = time.time()
+        prediction = [[prediction[0][2]],[prediction[1][2]],[prediction[2][2]]]
     print("Average Inference time: {:.8f}ms (Total time: {:.8f}s)".format((end - start) * 1000 /loop_count,(end - start)))
     
     
@@ -368,6 +380,7 @@ def handle_prediction(prediction, image_file, image, image_shape, anchors, class
     start = time.time()
     if len(anchors) == 5:
         # YOLOv2 use 5 anchors and have only 1 prediction
+        print(len(prediction))
         assert len(prediction) == 1, 'invalid YOLOv2 prediction number.'
         boxes, classes, scores = yolo2_postprocess_np(prediction[0], image_shape, anchors, len(class_names), model_image_size, elim_grid_sense=elim_grid_sense)
     else:

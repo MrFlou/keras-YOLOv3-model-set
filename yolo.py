@@ -35,8 +35,8 @@ optimize_tf_gpu(tf, K)
 #tf.enable_eager_execution()
 
 default_config = {
-        "model_type": 'yolo3_mobilenetv3small_ultralite',
-        "weights_path": "logs\\tiny_yolo3_mobilenetv3small_ultralite_001\\ep038-loss6.040-val_loss6.735.h5", #os.path.join('weights', 'yolov3-tiny.h5'),
+        "model_type": 'yolo5_mobilenetv2_lite',
+        "weights_path": "logs\\Trained\\yolo5_mobilenetv2_lite_101\\dump\\outmodel.h5", #os.path.join('weights', 'yolov3-tiny.h5'),
         "pruning_model": False,
         "anchors_path": os.path.join('configs', 'yolo3_anchors.txt'),
         "classes_path": os.path.join('configs', 'voc_classes.txt'),
@@ -139,8 +139,13 @@ class YOLO_np(object):
 
         out_classnames = [self.class_names[c] for c in out_classes]
         return Image.fromarray(image_array), out_boxes, out_classnames, out_scores
-
-
+    
+    OpenVino_path = f"logs\\Trained\\yolo5_mobilenetv2_lite_101\\dump\\saved_model.xml"
+    from openvino.inference_engine import IECore
+    ie = IECore()
+    net = ie.read_network(model=OpenVino_path)
+    _network = ie.load_network(network=net, device_name="MYRIAD")
+    input_layer = next(iter(_network.input_info))
     def predict(self, image_data, image_shape):
         num_anchors = len(self.anchors)
         if self.model_type.startswith('scaled_yolo4_') or self.model_type.startswith('yolo5_'):
@@ -149,14 +154,19 @@ class YOLO_np(object):
         elif self.model_type.startswith('yolo3_') or self.model_type.startswith('yolo4_') or \
              self.model_type.startswith('tiny_yolo3_') or self.model_type.startswith('tiny_yolo4_'):
             # YOLOv3 & v4 entrance
-            #print("prediction: ", np.array(self.yolo_model.predict(image_data)[0]).shape)
-            #print("prediction: ", np.array(self.yolo_model.predict(image_data)[1]).shape)
-            #print("prediction: ", np.array(self.yolo_model.predict(image_data)[2]).shape)
-            #print(yolo3_postprocess_np(self.yolo_model.predict(image_data), image_shape, self.anchors, len(self.class_names), self.model_image_size, max_boxes=100, confidence=self.score, iou_threshold=self.iou, elim_grid_sense=self.elim_grid_sense))
-            out_boxes, out_classes, out_scores = yolo3_postprocess_np(self.yolo_model.predict(image_data), image_shape, self.anchors, len(self.class_names), self.model_image_size, max_boxes=100, confidence=self.score, iou_threshold=self.iou, elim_grid_sense=self.elim_grid_sense)
+            #images = np.transpose(image_data,(0,3,1,2))
+            #res = self._network.infer(inputs={self.input_layer: images})
+            #prediction = [np.transpose(res['StatefulPartitionedCall/model/predict_conv_1/BiasAdd/Add'],(0,2,3,1)),np.transpose(res['StatefulPartitionedCall/model/predict_conv_2/BiasAdd/Add'],(0,2,3,1)),np.transpose(res['StatefulPartitionedCall/model/predict_conv_3/BiasAdd/Add'],(0,2,3,1))]
+            prediction = self.yolo_model.predict(image_data, batch_size=1)
+            out_boxes, out_classes, out_scores = yolo3_postprocess_np(prediction, image_shape, self.anchors, len(self.class_names), self.model_image_size, max_boxes=100, confidence=self.score, iou_threshold=self.iou, elim_grid_sense=self.elim_grid_sense)
         elif self.model_type.startswith('yolo2_') or self.model_type.startswith('tiny_yolo2_'):
             # YOLOv2 entrance
-            out_boxes, out_classes, out_scores = yolo2_postprocess_np(self.yolo_model.predict(image_data), image_shape, self.anchors, len(self.class_names), self.model_image_size, max_boxes=100, confidence=self.score, iou_threshold=self.iou, elim_grid_sense=self.elim_grid_sense)
+            images = np.transpose(image_data,(0,3,1,2))
+            res = self._network.infer(inputs={self.input_layer: images})
+            #prediction = np.array(np.transpose(res['StatefulPartitionedCall/model/predict_conv/BiasAdd/Add'],(0,2,3,1)))
+            #prediction = self.yolo_model.predict(image_data)
+            print(prediction.shape)
+            out_boxes, out_classes, out_scores = yolo2_postprocess_np(prediction, image_shape, self.anchors, len(self.class_names), self.model_image_size, max_boxes=100, confidence=self.score, iou_threshold=self.iou, elim_grid_sense=self.elim_grid_sense)
         else:
             raise ValueError('Unsupported model type')
 
