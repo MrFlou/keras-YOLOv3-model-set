@@ -951,14 +951,24 @@ for real in test_real:
         if TFminDist > dist:
             TFminDist = dist
             TFGuess = [pred, real]
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
-
-
-print("Truth example: ",test_real[4],"\nNumber of Real:", len(test_real))
-print("OpenVino: ",OVGuess,"\nDistance from Truth: ", OVminDist)
-print("OpenVino Time: ",endtime- starttime,"\nNumber of Guesses:", len(boxes))
-print("TensorFlow: ",TFGuess,"\nDistance from Truth: ", TFminDist)
-print("TensorFlow Time: ",tfStop - tfStart,"\nNumber of Guesses:", len(tFBoxes))
+print("#####################################################################")
+print(bcolors.BOLD + "Truth example:" + bcolors.ENDC,test_real[4],"\nNumber of Real:", len(test_real))
+print(bcolors.BOLD + "OpenVino:" + bcolors.ENDC,OVGuess,"\nDistance from Truth:", OVminDist)
+print("OpenVino Time:",endtime- starttime,"\nNumber of Guesses:", len(boxes))
+print(bcolors.BOLD + "TensorFlow:" + bcolors.ENDC,TFGuess,"\nDistance from Truth:", TFminDist)
+print("TensorFlow Time:",tfStop - tfStart,"\nNumber of Guesses:", len(tFBoxes))
+print("#####################################################################")
 img = cv2.imread(Test_Image)
 
 
@@ -966,11 +976,11 @@ for x in test_real:
     image = cv2.rectangle(img, (x[0],x[1]), (x[2],x[3]), (0,255,0), 2)
 for x in range(len(tFBoxes)):
     cv2.putText(image, str(tfProb[x])[:4], (tFBoxes[x][0],tFBoxes[x][1]+12), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
-    #image = cv2.rectangle(image, (tFBoxes[x][0],tFBoxes[x][1]), (tFBoxes[x][2],tFBoxes[x][3]), (0,0,255), 2)
+    image = cv2.rectangle(image, (tFBoxes[x][0],tFBoxes[x][1]), (tFBoxes[x][2],tFBoxes[x][3]), (0,0,255), 2)
 for x in range(len(boxes)):
     cv2.putText(image, str(OVProb[x])[:4], (boxes[x][0],boxes[x][1]+48), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,0,0), 2)
-    #image = cv2.rectangle(image, (boxes[x][0],boxes[x][1]), (boxes[x][2],boxes[x][3]), (255,0,0), 2)
-cv2.imshow("window_name", image)
+    image = cv2.rectangle(image, (boxes[x][0],boxes[x][1]), (boxes[x][2],boxes[x][3]), (255,0,0), 2)
+cv2.imshow("Visual", image)
 key = cv2.waitKey()#pauses for 3 seconds before fetching next image
 if key == 27:#if ESC is pressed, exit loop
     cv2.destroyAllWindows()

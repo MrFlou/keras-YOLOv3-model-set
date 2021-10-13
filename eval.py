@@ -342,6 +342,7 @@ def yolo_predict_keras(model, image, anchors, num_classes, model_image_size, con
     image_data = preprocess_image(image, model_image_size)
     
     
+
     #images = np.transpose(image_data,(0,3,1,2))
     #origin image shape, in (height, width) format
     image_shape = tuple(reversed(image.size))
@@ -350,6 +351,7 @@ def yolo_predict_keras(model, image, anchors, num_classes, model_image_size, con
     #prediction = [np.transpose(res['StatefulPartitionedCall/model/predict_conv_1/BiasAdd/Add'],(0,2,3,1)),np.transpose(res['StatefulPartitionedCall/model/predict_conv_2/BiasAdd/Add'],(0,2,3,1)),np.transpose(res['StatefulPartitionedCall/model/predict_conv_3/BiasAdd/Add'],(0,2,3,1))]
     
     prediction = model.predict([image_data])
+
     if len(anchors) == 5:
         # YOLOv2 use 5 anchors
         pred_boxes, pred_classes, pred_scores = yolo2_postprocess_np(prediction, image_shape, anchors, num_classes, model_image_size, max_boxes=100, confidence=conf_threshold, elim_grid_sense=elim_grid_sense)
